@@ -64,6 +64,11 @@
   button.primary{ background:linear-gradient(100deg,var(--dawn-1),var(--dawn-2)); color:#1a0e05; }
   button.primary:active{ transform:scale(.98); }
   button.primary:disabled{ opacity:.45; cursor:default; transform:none; }
+  button.ghost{
+    background:transparent; color:var(--text-dim); border:1px solid var(--line);
+    margin-top:10px; font-weight:500; font-size:13px; padding:11px 20px;
+  }
+  button.ghost:hover{ color:var(--text); border-color:var(--text-faint); }
   .status{
     margin-top:14px; font-size:13px; color:var(--text-dim); min-height:18px; line-height:1.5;
   }
@@ -78,7 +83,7 @@
 </head>
 <body>
 <div class="wrap">
-  <div class="topbar"><span><b>Elysium</b> · km</span><span id="netLabel">testnet</span></div>
+  <div class="topbar"><span><b>Elysium</b> · gm</span><span id="netLabel">testnet</span></div>
 
   <div class="card">
     <p class="hero-label">say it once a day</p>
@@ -91,10 +96,11 @@
     <div class="row"><span class="k">next km</span><span class="v" id="cooldown">—</span></div>
 
     <button class="primary" id="mainBtn">Connect wallet</button>
+    <button class="ghost" id="disconnectBtn" style="display:none">Disconnect</button>
     <p class="status" id="statusMsg"></p>
 
     <p class="foot">
-      Chain ID 99801 · RPC <span id="rpcLabel">testnet-rpc.elysium.kinetiq.xyz</span> · <a href="https://elysium.kinetiq.xyz/testnet-explorer" target="_blank" rel="noopener">explorer</a> · <a href="https://elysium.kinetiq.xyz/testnet-faucet" target="_blank" rel="noopener">HYPE faucet</a><br>
+      Chain ID 99801 · RPC <span id="rpcLabel">testnet-rpc.elysium.kinetiq.xyz</span> · <a href="https://elysium.kinetiq.xyz/testnet-explorer" target="_blank" rel="noopener">explorer</a> · <a href="https://app.hyperliquid-testnet.xyz/drip" target="_blank" rel="noopener">HYPE faucet</a><br>
       Wallet support: <a href="https://rabby.io" target="_blank" rel="noopener">Rabby</a> preferred, any injected EVM wallet works.
     </p>
   </div>
@@ -119,7 +125,7 @@ const ABI = [
 ];
 
 const $ = id => document.getElementById(id);
-const mainBtn = $('mainBtn'), statusMsg = $('statusMsg'), connDot = $('connDot'),
+const mainBtn = $('mainBtn'), disconnectBtn = $('disconnectBtn'), statusMsg = $('statusMsg'), connDot = $('connDot'),
       acctLabel = $('acctLabel'), yourCount = $('yourCount'), totalCount = $('totalCount'),
       cooldownEl = $('cooldown');
 
@@ -173,8 +179,9 @@ async function connect(){
     acctLabel.textContent = account.slice(0,6) + '…' + account.slice(-4) + (injected.isRabby ? ' · Rabby' : '');
     setStatus('');
     initContract();
-    mainBtn.textContent = 'Say gm';
+    mainBtn.textContent = 'Say km';
     mainBtn.onclick = sayGm;
+    disconnectBtn.style.display = 'block';
   }catch(err){
     setStatus(err.message || 'Connection failed.', 'err');
   }
@@ -237,7 +244,23 @@ async function sayGm(){
   }
 }
 
+function disconnect(){
+  clearInterval(cooldownTimer);
+  provider = signer = contract = account = undefined;
+  connDot.className = 'dot off';
+  acctLabel.textContent = 'not connected';
+  yourCount.textContent = '—';
+  totalCount.textContent = '—';
+  cooldownEl.textContent = '—';
+  mainBtn.textContent = 'Connect wallet';
+  mainBtn.onclick = connect;
+  mainBtn.disabled = false;
+  disconnectBtn.style.display = 'none';
+  setStatus('Disconnected.');
+}
+
 mainBtn.onclick = connect;
+disconnectBtn.onclick = disconnect;
 </script>
 </body>
 </html>
