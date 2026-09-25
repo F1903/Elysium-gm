@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>gm — Elysium Testnet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#071310; --bg-alt:#0c1e18; --panel:#0f231d; --line:#1e3a31;
+    --text:#eef4f0; --text-dim:#8fa79c; --text-faint:#5a7268;
+    --dawn-1:#ffb86b; --dawn-2:#ff7a8a; --green:#5cf2a6; --red:#ff8a80;
+    box-sizing:border-box;
+    padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  @media (prefers-color-scheme: light){ :root:not([data-theme="dark"]){ } }
+  *{box-sizing:border-box;}
+  html{scroll-padding-top:env(safe-area-inset-top,0px); height:100%;}
+  body{
+    height:100%; margin:0; background:var(--bg); color:var(--text);
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+    display:flex; align-items:center; justify-content:center; padding:32px 18px;
+  }
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background:radial-gradient(60% 40% at 50% 0%, rgba(255,184,107,.10), transparent 70%);
+  }
+  .wrap{ position:relative; z-index:1; width:100%; max-width:460px; }
+  .topbar{
+    display:flex; align-items:baseline; justify-content:space-between;
+    margin-bottom:18px; font-size:13px; color:var(--text-dim);
+  }
+  .topbar b{ color:var(--text); font-weight:600; }
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:18px;
+    padding:36px 30px 28px; overflow:hidden;
+  }
+  .hero-label{ font-size:13px; color:var(--text-faint); margin:0 0 6px; }
+  h1{
+    font-family:'Fraunces',serif; font-weight:400; font-style:italic;
+    font-size:76px; line-height:.9; margin:0 0 14px; letter-spacing:-.01em;
+    background:linear-gradient(100deg,var(--dawn-1),var(--dawn-2));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .sub{ font-size:15px; line-height:1.55; color:var(--text-dim); margin:0 0 26px; max-width:36ch; }
+  .row{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:12px 0; border-top:1px solid var(--line); font-size:14px;
+  }
+  .row:first-of-type{ border-top:1px solid var(--line); }
+  .row .k{ color:var(--text-faint); }
+  .row .v{ color:var(--text); font-variant-numeric:tabular-nums; }
+  .dot{ display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:7px; background:var(--text-faint); }
+  .dot.on{ background:var(--green); box-shadow:0 0 0 3px rgba(92,242,166,.15); }
+  .dot.off{ background:var(--red); }
+  button{
+    font-family:inherit; font-size:15px; font-weight:600; border:none; border-radius:12px;
+    padding:15px 20px; cursor:pointer; width:100%; margin-top:22px;
+    transition:transform .12s ease, opacity .12s ease;
+  }
+  button.primary{ background:linear-gradient(100deg,var(--dawn-1),var(--dawn-2)); color:#1a0e05; }
+  button.primary:active{ transform:scale(.98); }
+  button.primary:disabled{ opacity:.45; cursor:default; transform:none; }
+  .status{
+    margin-top:14px; font-size:13px; color:var(--text-dim); min-height:18px; line-height:1.5;
+  }
+  .status.err{ color:var(--red); }
+  .status.ok{ color:var(--green); }
+  .foot{ margin-top:22px; padding-top:16px; border-top:1px solid var(--line); font-size:12px; color:var(--text-faint); line-height:1.6; }
+  a{ color:var(--dawn-1); text-decoration:none; }
+  a:hover{ text-decoration:underline; }
+  :focus-visible{ outline:2px solid var(--dawn-1); outline-offset:2px; }
+  @media (prefers-reduced-motion: reduce){ *{ transition:none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar"><span><b>Elysium</b> · km</span><span id="netLabel">testnet</span></div>
+
+  <div class="card">
+    <p class="hero-label">say it once a day</p>
+    <h1>km</h1>
+    <p class="sub">A small on-chain ritual for Elysium — Hyperliquid's L2, gassed in HYPE. Connect a wallet and say km once every 24 hours.</p>
+
+    <div class="row"><span class="k"><span id="connDot" class="dot off"></span>wallet</span><span class="v" id="acctLabel">not connected</span></div>
+    <div class="row"><span class="k">your kms</span><span class="v" id="yourCount">—</span></div>
+    <div class="row"><span class="k">network kms</span><span class="v" id="totalCount">—</span></div>
+    <div class="row"><span class="k">next km</span><span class="v" id="cooldown">—</span></div>
+
+    <button class="primary" id="mainBtn">Connect wallet</button>
+    <p class="status" id="statusMsg"></p>
+
+    <p class="foot">
+      Chain ID 99801 · RPC <span id="rpcLabel">testnet-rpc.elysium.kinetiq.xyz</span> · <a href="https://elysium.kinetiq.xyz/testnet-explorer" target="_blank" rel="noopener">explorer</a> · <a href="https://elysium.kinetiq.xyz/testnet-faucet" target="_blank" rel="noopener">HYPE faucet</a><br>
+      Wallet support: <a href="https://rabby.io" target="_blank" rel="noopener">Rabby</a> preferred, any injected EVM wallet works.
+    </p>
+  </div>
+</div>
+
+<script>
+const ELYSIUM_TESTNET = {
+  chainId: "0x185d9", // 99801
+  chainName: "Elysium Testnet",
+  nativeCurrency: { name: "HYPE", symbol: "HYPE", decimals: 18 },
+  rpcUrls: ["https://testnet-rpc.elysium.kinetiq.xyz"],
+  blockExplorerUrls: ["https://elysium.kinetiq.xyz/testnet-explorer"]
+};
+
+const ABI = [
+  "function gm() external",
+  "function lastGM(address) view returns (uint256)",
+  "function gmCount(address) view returns (uint256)",
+  "function totalGMs() view returns (uint256)",
+  "function timeUntilNextGm(address) view returns (uint256)",
+  "function canSayGm(address) view returns (bool)"
+];
+
+const $ = id => document.getElementById(id);
+const mainBtn = $('mainBtn'), statusMsg = $('statusMsg'), connDot = $('connDot'),
+      acctLabel = $('acctLabel'), yourCount = $('yourCount'), totalCount = $('totalCount'),
+      cooldownEl = $('cooldown');
+
+const CONTRACT_ADDRESS = '0x7ACefBB2c95d557f2398d62d30C11ab14c917Eb5';
+let provider, signer, contract, account, cooldownTimer;
+
+function setStatus(msg, kind){
+  statusMsg.textContent = msg || '';
+  statusMsg.className = 'status' + (kind ? ' ' + kind : '');
+}
+
+function pickInjectedProvider(){
+  if (!window.ethereum) return null;
+  if (Array.isArray(window.ethereum.providers) && window.ethereum.providers.length){
+    return window.ethereum.providers.find(p => p.isRabby) || window.ethereum.providers[0];
+  }
+  return window.ethereum;
+}
+
+async function ensureElysiumNetwork(injected){
+  const currentId = await injected.request({ method: 'eth_chainId' });
+  if (currentId?.toLowerCase() === ELYSIUM_TESTNET.chainId) return;
+  try{
+    await injected.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: ELYSIUM_TESTNET.chainId }] });
+  }catch(err){
+    if (err.code === 4902 || /Unrecognized chain/i.test(err.message||'')){
+      await injected.request({ method: 'wallet_addEthereumChain', params: [ELYSIUM_TESTNET] });
+    } else {
+      throw err;
+    }
+  }
+}
+
+async function connect(){
+  const injected = pickInjectedProvider();
+  if (!injected){
+    setStatus('No wallet found. Install Rabby to continue.', 'err');
+    window.open('https://rabby.io', '_blank');
+    return;
+  }
+  try{
+    setStatus('Connecting…');
+    const accounts = await injected.request({ method: 'eth_requestAccounts' });
+    await ensureElysiumNetwork(injected);
+    provider = new ethers.providers.Web3Provider(injected);
+    signer = provider.getSigner();
+    account = accounts[0];
+    injected.on?.('accountsChanged', () => location.reload());
+    injected.on?.('chainChanged', () => location.reload());
+    connDot.className = 'dot on';
+    acctLabel.textContent = account.slice(0,6) + '…' + account.slice(-4) + (injected.isRabby ? ' · Rabby' : '');
+    setStatus('');
+    initContract();
+    mainBtn.textContent = 'Say gm';
+    mainBtn.onclick = sayGm;
+  }catch(err){
+    setStatus(err.message || 'Connection failed.', 'err');
+  }
+}
+
+function initContract(){
+  contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+  refreshStats();
+}
+
+async function refreshStats(){
+  if (!contract || !account) return;
+  try{
+    const [yours, total, secs] = await Promise.all([
+      contract.gmCount(account),
+      contract.totalGMs(),
+      contract.timeUntilNextGm(account)
+    ]);
+    yourCount.textContent = yours.toString();
+    totalCount.textContent = total.toString();
+    startCooldown(secs.toNumber());
+  }catch(err){
+    setStatus('Could not read contract — check the address and network.', 'err');
+  }
+}
+
+function startCooldown(seconds){
+  clearInterval(cooldownTimer);
+  const tick = () => {
+    if (seconds <= 0){
+      cooldownEl.textContent = 'now';
+      mainBtn.disabled = false;
+      clearInterval(cooldownTimer);
+      return;
+    }
+    const h = String(Math.floor(seconds/3600)).padStart(2,'0');
+    const m = String(Math.floor((seconds%3600)/60)).padStart(2,'0');
+    const s = String(seconds%60).padStart(2,'0');
+    cooldownEl.textContent = `${h}:${m}:${s}`;
+    mainBtn.disabled = true;
+    seconds--;
+  };
+  tick();
+  cooldownTimer = setInterval(tick, 1000);
+}
+
+async function sayGm(){
+  if (!contract) return;
+  try{
+    mainBtn.disabled = true;
+    setStatus('Confirm in your wallet…');
+    const tx = await contract.gm();
+    setStatus('Waiting for confirmation…');
+    await tx.wait();
+    setStatus('gm said. ☀️', 'ok');
+    refreshStats();
+  }catch(err){
+    setStatus(err?.reason || err?.data?.message || err.message || 'Transaction failed.', 'err');
+    mainBtn.disabled = false;
+  }
+}
+
+mainBtn.onclick = connect;
+</script>
+</body>
+</html>
